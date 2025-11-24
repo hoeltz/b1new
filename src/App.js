@@ -117,7 +117,7 @@ import {
     AccountBalanceWallet as FinanceIcon,
     ExpandMore as ExpandMoreIcon,
     ExpandLess as ExpandLessIcon,
-    FileDocument as FileDocumentIcon,
+    Description as DescriptionIcon,
     TrendingDown as TrendingDownIcon,
     Storage as StorageIcon,
   } from '@mui/icons-material';
@@ -269,12 +269,12 @@ function App() {
           if (item.text === 'Kepabeanan' && item.category === 'bridge') {
             const isExpanded = expandedMenus['kepabeanan'];
             const kepabeananSubmenus = [
-              { label: 'Laporan Pemasukan Barang', path: '/bridge/kepabeanan/inbound', icon: <FileDocumentIcon /> },
+              { label: 'Laporan Pemasukan Barang', path: '/bridge/kepabeanan/inbound', icon: <DescriptionIcon /> },
               { label: 'Laporan Pengeluaran Barang', path: '/bridge/kepabeanan/outbound', icon: <TrendingDownIcon /> },
               { label: 'Laporan Posisi WIP', path: '/bridge/kepabeanan/wip', icon: <StorageIcon /> },
-              { label: 'Laporan Mutasi Bahan Baku', path: '/bridge/kepabeanan/mutasi_bahan', icon: <FileDocumentIcon /> },
-              { label: 'Laporan Mutasi Barang Jadi', path: '/bridge/kepabeanan/mutasi_produk', icon: <FileDocumentIcon /> },
-              { label: 'Laporan Mutasi Mesin', path: '/bridge/kepabeanan/mutasi_asset', icon: <FileDocumentIcon /> },
+              { label: 'Laporan Mutasi Bahan Baku', path: '/bridge/kepabeanan/mutasi_bahan', icon: <DescriptionIcon /> },
+              { label: 'Laporan Mutasi Barang Jadi', path: '/bridge/kepabeanan/mutasi_produk', icon: <DescriptionIcon /> },
+              { label: 'Laporan Mutasi Mesin', path: '/bridge/kepabeanan/mutasi_asset', icon: <DescriptionIcon /> },
               { label: 'Laporan Barang Reject/Scrap', path: '/bridge/kepabeanan/reject', icon: <WarningIcon /> },
             ];
 

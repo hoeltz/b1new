@@ -9,7 +9,7 @@ import {
 } from '@mui/material';
 import {
   Home as HomeIcon,
-  FileDocument as FileDocumentIcon,
+  Description as DescriptionIcon,
   ChevronRight as ChevronRightIcon,
 } from '@mui/icons-material';
 
@@ -30,7 +30,7 @@ const BRidgeKepabeananLayout = ({ title, subtitle, breadcrumbs, children, action
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-              <FileDocumentIcon sx={{ fontSize: 32 }} />
+              <DescriptionIcon sx={{ fontSize: 32 }} />
               <Box>
                 <Typography variant="h4" sx={{ fontWeight: 'bold', lineHeight: 1.2 }}>
                   {title}
