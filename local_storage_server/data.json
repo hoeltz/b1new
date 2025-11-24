@@ -906,6 +906,37 @@
       "note": "Sample warehouse data",
       "createdAt": "2025-11-24T11:37:48.688Z",
       "updatedAt": "2025-11-24T11:37:48.688Z"
+    },
+    {
+      "id": "fae8e053-5994-4302-a410-0681d3d09a79",
+      "doc_type": "OUT",
+      "doc_number": "OUT-TEST-004",
+      "doc_date": "2025-11-24T16:00:00Z",
+      "receipt_number": "OUT-AWB-02",
+      "receipt_date": "2025-11-24T12:50:11.637Z",
+      "sender_name": "",
+      "item_code": "BBK-001",
+      "item_name": "BBK-001",
+      "qty": 20,
+      "unit": "PCS",
+      "value_amount": 0,
+      "value_currency": "IDR",
+      "movement_type": "OUT",
+      "source": "WAREHOUSE",
+      "location_id": "WH-A",
+      "to_location_id": "",
+      "area": "",
+      "lot": "",
+      "serial_no": "",
+      "rack": "",
+      "wip_stage": null,
+      "reference_id": "e9b93ae6-014d-47f9-86b9-4a5e309a321b",
+      "created_by": "system",
+      "approved_by": null,
+      "approval_status": "pending",
+      "note": "",
+      "createdAt": "2025-11-24T12:50:11.637Z",
+      "updatedAt": "2025-11-24T12:50:11.637Z"
     }
   ],
   "items": [
@@ -924,6 +955,22 @@
       "unit": "KG",
       "createdAt": "2025-11-24T10:37:28.036Z",
       "updatedAt": "2025-11-24T10:37:28.036Z"
+    },
+    {
+      "id": "efcde7b1-5b49-4d59-8f29-ed63aad07eb1",
+      "item_code": "BBK-001",
+      "item_name": "Bahan Baku Plastik",
+      "unit": "PCS",
+      "createdAt": "2025-11-24T12:11:00.420Z",
+      "updatedAt": "2025-11-24T12:11:00.420Z"
+    },
+    {
+      "id": "e1cba0f2-c62e-4f82-aebf-7859e2b46012",
+      "item_code": "ZZZ-TEST",
+      "item_name": "Z Test",
+      "unit": "unit",
+      "createdAt": "2025-11-24T12:16:01.858Z",
+      "updatedAt": "2025-11-24T12:16:01.858Z"
     }
   ]
 }
