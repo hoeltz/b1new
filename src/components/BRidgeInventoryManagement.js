@@ -60,8 +60,18 @@ const SHIPPING_STATUSES = [
 
 const CUSTOMS_STATUSES = [
   'Import',
-  'Export'
+  'Export',
+  'TPPB_PENDING',
+  'TPPB_APPROVED_FOR_SALE',
+  'TPPB_APPROVED_FOR_REEXPORT',
+  'TPPB_TRANSFERRED',
+  'TPPB_RETURNED',
+  'TPPB_CLEARED'
 ];
+
+const APPROVAL_STATUSES = ['pending', 'approved', 'rejected', 'for_inspection'];
+
+const CONDITIONS = ['baik', 'rusak', 'cacat'];
 
 const BridgeInventoryManagement = ({ onNotification }) => {
   const [inventory, setInventory] = useState([]);
@@ -95,7 +105,28 @@ const BridgeInventoryManagement = ({ onNotification }) => {
     golongan: 'barang masuk',
     masuk_warehouse_date: '',
     event_date: '',
-    re_export_date: ''
+    re_export_date: '',
+    // Phase 1: TPPB Core Fields
+    tppb_number: '',
+    tppb_date_start: '',
+    tppb_date_end: '',
+    manifest_number: '',
+    manifest_line_no: '',
+    hs_code: '',
+    approval_by: '',
+    approval_date: '',
+    approval_status: 'pending',
+    // Phase 2: Country & Custodian
+    country_of_origin: '',
+    export_destination: '',
+    tppb_custodian: '',
+    tppb_contact: '',
+    // Phase 3: Value & Condition
+    fob_value: 0,
+    cif_value: 0,
+    condition: 'baik',
+    qty_condition_breakdown: '',
+    inspections: []
   });
 
   const [itemsList, setItemsList] = useState([]);
@@ -413,7 +444,7 @@ const BridgeInventoryManagement = ({ onNotification }) => {
         /* ignore duplicate item */ 
       }
 
-      // Create movement record with new fields
+      // Create movement record with Phase 1-3 fields
       await createMovement({
         doc_type: formData.bcInputType || 'BRIDGE',
         doc_number: formData.bl || `AUTO-${Date.now()}`,
@@ -430,12 +461,34 @@ const BridgeInventoryManagement = ({ onNotification }) => {
         movement_type: 'IN',
         source: 'BRIDGE',
         note: formData.description || '',
+        // Phase 1: AJU & Golongan
         aju_number: formData.aju_number || '',
         aju_date: formData.aju_date || '',
         golongan: formData.golongan || 'barang masuk',
         masuk_warehouse_date: formData.masuk_warehouse_date || '',
         event_date: formData.event_date || '',
-        re_export_date: formData.re_export_date || ''
+        re_export_date: formData.re_export_date || '',
+        // Phase 1: TPPB Core
+        tppb_number: formData.tppb_number || '',
+        tppb_date_start: formData.tppb_date_start || '',
+        tppb_date_end: formData.tppb_date_end || '',
+        manifest_number: formData.manifest_number || '',
+        manifest_line_no: formData.manifest_line_no || '',
+        hs_code: formData.hs_code || '',
+        approval_by: formData.approval_by || '',
+        approval_date: formData.approval_date || '',
+        approval_status: formData.approval_status || 'pending',
+        // Phase 2: Country & Custodian
+        country_of_origin: formData.country_of_origin || '',
+        export_destination: formData.export_destination || '',
+        tppb_custodian: formData.tppb_custodian || '',
+        tppb_contact: formData.tppb_contact || '',
+        // Phase 3: Value & Condition
+        fob_value: Number(formData.fob_value || 0),
+        cif_value: Number(formData.cif_value || 0),
+        condition: formData.condition || 'baik',
+        qty_condition_breakdown: formData.qty_condition_breakdown || '',
+        inspections: formData.inspections || []
       });
 
       // Reload data from API
@@ -486,7 +539,25 @@ const BridgeInventoryManagement = ({ onNotification }) => {
         golongan: 'barang masuk',
         masuk_warehouse_date: '',
         event_date: '',
-        re_export_date: ''
+        re_export_date: '',
+        tppb_number: '',
+        tppb_date_start: '',
+        tppb_date_end: '',
+        manifest_number: '',
+        manifest_line_no: '',
+        hs_code: '',
+        approval_by: '',
+        approval_date: '',
+        approval_status: 'pending',
+        country_of_origin: '',
+        export_destination: '',
+        tppb_custodian: '',
+        tppb_contact: '',
+        fob_value: 0,
+        cif_value: 0,
+        condition: 'baik',
+        qty_condition_breakdown: '',
+        inspections: []
       });
     }
     setDialogOpen(true);
@@ -677,6 +748,15 @@ const BridgeInventoryManagement = ({ onNotification }) => {
               <TableCell sx={{ color: 'white', fontWeight: 'bold', py: 2 }}>
                 <Typography variant="subtitle2" sx={{ color: 'inherit', fontWeight: 'bold' }}>Tgl Masuk / Event</Typography>
               </TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold', py: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: 'inherit', fontWeight: 'bold' }}>TPPB / HS Code</Typography>
+              </TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold', py: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: 'inherit', fontWeight: 'bold' }}>Asal / Tujuan</Typography>
+              </TableCell>
+              <TableCell sx={{ color: 'white', fontWeight: 'bold', py: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: 'inherit', fontWeight: 'bold' }}>Approval / FOB-CIF</Typography>
+              </TableCell>
               <TableCell align="right" sx={{ color: 'white', fontWeight: 'bold', py: 2 }}>
                 <Typography variant="subtitle2" sx={{ color: 'inherit', fontWeight: 'bold' }}>Actions</Typography>
               </TableCell>
@@ -770,6 +850,33 @@ const BridgeInventoryManagement = ({ onNotification }) => {
                 <TableCell sx={{ py: 2 }}>
                   <Typography variant="caption">{item.masuk_warehouse_date ? new Date(item.masuk_warehouse_date).toLocaleDateString('id-ID') : '-'}</Typography>
                   <Typography variant="caption" color="textSecondary">{item.event_date ? new Date(item.event_date).toLocaleDateString('id-ID') : '-'}</Typography>
+                </TableCell>
+                {/* TPPB / HS Code Column */}
+                <TableCell sx={{ py: 2 }}>
+                  <Typography variant="body2">{item.tppb_number || '-'}</Typography>
+                  <Typography variant="caption" color="textSecondary">{item.hs_code || '-'}</Typography>
+                </TableCell>
+                {/* Country / Destination Column */}
+                <TableCell sx={{ py: 2 }}>
+                  <Typography variant="caption">{item.country_of_origin || '-'}</Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    {item.export_destination ? `→ ${item.export_destination}` : ''}
+                  </Typography>
+                </TableCell>
+                {/* Approval / Value Column */}
+                <TableCell sx={{ py: 2 }}>
+                  <Chip
+                    label={item.approval_status || 'pending'}
+                    color={item.approval_status === 'approved' ? 'success' : item.approval_status === 'rejected' ? 'error' : 'warning'}
+                    size="small"
+                    sx={{ mb: 0.5 }}
+                  />
+                  <Typography variant="caption" display="block">
+                    FOB: {(item.fob_value || 0).toLocaleString('id-ID')}
+                  </Typography>
+                  <Typography variant="caption" color="textSecondary">
+                    CIF: {(item.cif_value || 0).toLocaleString('id-ID')}
+                  </Typography>
                 </TableCell>
                 <TableCell align="right" sx={{ py: 2 }}>
                   <IconButton
@@ -1038,6 +1145,208 @@ const BridgeInventoryManagement = ({ onNotification }) => {
                 value={formData.re_export_date}
                 onChange={handleInputChange('re_export_date')}
                 InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+
+            {/* DIVIDER - PHASE 1: TPPB CORE FIELDS */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 'bold', color: '#667eea' }}>
+                📌 TPPB Information (Phase 1)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="TPPB Number"
+                value={formData.tppb_number}
+                onChange={handleInputChange('tppb_number')}
+                placeholder="e.g., TPPB-2025-00001"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="HS Code"
+                value={formData.hs_code}
+                onChange={handleInputChange('hs_code')}
+                placeholder="e.g., 3916.90.20"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="TPPB Date Start"
+                type="date"
+                value={formData.tppb_date_start}
+                onChange={handleInputChange('tppb_date_start')}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="TPPB Date End"
+                type="date"
+                value={formData.tppb_date_end}
+                onChange={handleInputChange('tppb_date_end')}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Manifesto Number"
+                value={formData.manifest_number}
+                onChange={handleInputChange('manifest_number')}
+                placeholder="e.g., MF-001"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Manifesto Line No"
+                value={formData.manifest_line_no}
+                onChange={handleInputChange('manifest_line_no')}
+                placeholder="e.g., 1, 2, 3"
+              />
+            </Grid>
+
+            {/* DIVIDER - APPROVAL STATUS */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 'bold', color: '#667eea' }}>
+                ✅ Approval Status
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Approval By"
+                value={formData.approval_by}
+                onChange={handleInputChange('approval_by')}
+                placeholder="e.g., Budi Santoso"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Approval Date"
+                type="date"
+                value={formData.approval_date}
+                onChange={handleInputChange('approval_date')}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Approval Status</InputLabel>
+                <Select
+                  value={formData.approval_status}
+                  onChange={handleInputChange('approval_status')}
+                  label="Approval Status"
+                >
+                  {APPROVAL_STATUSES.map(status => (
+                    <MenuItem key={status} value={status}>{status}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* DIVIDER - PHASE 2: COUNTRY & CUSTODIAN */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 'bold', color: '#764ba2' }}>
+                🌍 Country & Custodian (Phase 2)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Country of Origin"
+                value={formData.country_of_origin}
+                onChange={handleInputChange('country_of_origin')}
+                placeholder="e.g., China, Singapore"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Export Destination"
+                value={formData.export_destination}
+                onChange={handleInputChange('export_destination')}
+                placeholder="e.g., Indonesia, Singapore"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="TPPB Custodian (PIC)"
+                value={formData.tppb_custodian}
+                onChange={handleInputChange('tppb_custodian')}
+                placeholder="e.g., Ahmad Rahman"
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Custodian Contact"
+                value={formData.tppb_contact}
+                onChange={handleInputChange('tppb_contact')}
+                placeholder="e.g., +62-21-123456"
+              />
+            </Grid>
+
+            {/* DIVIDER - PHASE 3: VALUE & CONDITION */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 'bold', color: '#764ba2' }}>
+                💰 Value & Condition (Phase 3)
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="FOB Value"
+                type="number"
+                value={formData.fob_value}
+                onChange={handleInputChange('fob_value')}
+                placeholder="0"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="CIF Value"
+                type="number"
+                value={formData.cif_value}
+                onChange={handleInputChange('cif_value')}
+                placeholder="0"
+              />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <FormControl fullWidth>
+                <InputLabel>Condition</InputLabel>
+                <Select
+                  value={formData.condition}
+                  onChange={handleInputChange('condition')}
+                  label="Condition"
+                >
+                  {CONDITIONS.map(cond => (
+                    <MenuItem key={cond} value={cond}>{cond}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Qty Condition Breakdown"
+                multiline
+                rows={2}
+                value={formData.qty_condition_breakdown}
+                onChange={handleInputChange('qty_condition_breakdown')}
+                placeholder="e.g., 90 baik, 8 rusak, 2 cacat"
               />
             </Grid>
           </Grid>
