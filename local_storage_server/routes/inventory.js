@@ -522,6 +522,20 @@ router.get('/inventory/aggregations/mutasi', (req, res) => {
     // Otherwise, skip type filtering to preserve backward compatibility when item_group metadata is missing.
     if (allowed.size > 0) {
       movements = movements.filter(m => allowed.has(m.item_code));
+    } else {
+      // Fallback heuristics: try matching by item_name containing the type keyword or common prefixes
+      const alt = new Set(store.items.filter(i => {
+        const code = (i.item_code || '').toLowerCase();
+        const name = (i.item_name || '').toLowerCase();
+        const t = String(type).toLowerCase();
+        if (name.includes(t)) return true;
+        if (t === 'bahan' && code.startsWith('bbk')) return true;
+        if (t === 'produk' && code.startsWith('pj')) return true;
+        if (t === 'asset' && (code.startsWith('ast') || name.includes('mesin'))) return true;
+        if (t === 'reject' && code.startsWith('rej')) return true;
+        return false;
+      }).map(i => i.item_code));
+      if (alt.size > 0) movements = movements.filter(m => alt.has(m.item_code));
     }
   }
 
