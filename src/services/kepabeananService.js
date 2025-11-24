@@ -23,29 +23,22 @@ export async function fetchOutbound(filters = {}) {
   return res.json();
 }
 
-export async function createMovement(payload) {
-  const url = `${API_BASE}/kepabeanan/movements`;
-  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-  if (!res.ok) throw new Error('Create movement failed');
-  return res.json();
-}
-
-// Inventory master and aggregation functions
-export async function fetchItems() {
-  const res = await fetch(`${API_BASE}/inventory/items`);
-  if (!res.ok) throw new Error('Fetch items failed');
-  return res.json();
-}
-
 export async function createItem(payload) {
   const res = await fetch(`${API_BASE}/inventory/items`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
   if (!res.ok) throw new Error('Create item failed');
   return res.json();
 }
 
-export async function fetchLocations() {
-  const res = await fetch(`${API_BASE}/inventory/locations`);
-  if (!res.ok) throw new Error('Fetch locations failed');
+export async function fetchItems() {
+  const res = await fetch(`${API_BASE}/inventory/items`);
+  if (!res.ok) throw new Error('Fetch items failed');
+  return res.json();
+}
+
+export async function createMovement(payload) {
+  const url = `${API_BASE}/inventory/movements`;
+  const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('Create movement failed');
   return res.json();
 }
 
@@ -60,11 +53,14 @@ export async function fetchInventoryMovements(filters = {}) {
   return res.json();
 }
 
-export async function fetchMutasiAggregation(filters = {}) {
+export async function fetchMutasiAggregation(type, filters = {}) {
   const qs = new URLSearchParams();
   if (filters.startDate) qs.set('start', filters.startDate);
   if (filters.endDate) qs.set('end', filters.endDate);
   if (filters.item) qs.set('item', filters.item);
+  
+  // Unified endpoint: fetch from inventory aggregations
+  // type can be 'bahan', 'produk', 'asset', 'reject' but all use same aggregation logic
   const url = `${API_BASE}/inventory/aggregations/mutasi?${qs.toString()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Fetch failed');

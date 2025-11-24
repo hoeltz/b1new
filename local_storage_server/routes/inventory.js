@@ -277,4 +277,197 @@ router.post('/consignments/dispatch', (req, res) => {
   }
 });
 
+// ============================================================================
+// UNIFIED INVENTORY & KEPABEANAN DATA INTEGRATION
+// ============================================================================
+
+// POST /api/inventory/items - Create or update item master
+router.post('/inventory/items', (req, res) => {
+  const { item_code, item_name, unit } = req.body || {};
+  if (!item_code || !item_name) {
+    return res.status(400).json({ ok: false, message: 'item_code and item_name are required' });
+  }
+
+  const store = db.getData();
+  store.items = store.items || [];
+  const now = new Date().toISOString();
+
+  // Check if item exists
+  let existing = store.items.find(i => i.item_code === item_code);
+  if (existing) {
+    existing.item_name = item_name;
+    existing.unit = unit || existing.unit;
+    existing.updatedAt = now;
+  } else {
+    existing = {
+      id: uuidv4(),
+      item_code,
+      item_name,
+      unit: unit || 'unit',
+      createdAt: now,
+      updatedAt: now
+    };
+    store.items.push(existing);
+  }
+
+  db.saveData(store);
+  res.json({ ok: true, item: existing });
+});
+
+// GET /api/inventory/items - Get all items
+router.get('/inventory/items', (req, res) => {
+  const store = db.getData();
+  const items = store.items || [];
+  res.json({ ok: true, items });
+});
+
+// POST /api/inventory/movements - Create movement with warehouse fields
+// body: { doc_type, doc_number, doc_date, receipt_number, receipt_date, sender_name, item_code, item_name, qty, unit, movement_type, location, area, lot, rack, wip_stage, note, source }
+router.post('/inventory/movements', (req, res) => {
+  const body = req.body || {};
+  const {
+    doc_type, doc_number, doc_date, receipt_number, receipt_date, sender_name,
+    item_code, item_name, qty, unit, movement_type, location, area, lot, rack, wip_stage, note, source
+  } = body;
+
+  if (!item_code || !qty || !movement_type) {
+    return res.status(400).json({ ok: false, message: 'item_code, qty, and movement_type are required' });
+  }
+
+  const store = db.getData();
+  store.movements = store.movements || [];
+  const now = new Date().toISOString();
+
+  const movement = {
+    id: uuidv4(),
+    doc_type: doc_type || 'IN',
+    doc_number: doc_number || `DOC-${Date.now()}`,
+    doc_date: doc_date || now.split('T')[0],
+    receipt_number: receipt_number || '',
+    receipt_date: receipt_date || now.split('T')[0],
+    sender_name: sender_name || '',
+    item_code,
+    item_name: item_name || item_code,
+    qty: Number(qty),
+    unit: unit || 'unit',
+    value_amount: body.value_amount || 0,
+    value_currency: body.value_currency || 'IDR',
+    movement_type: movement_type || 'IN',
+    source: source || 'WAREHOUSE',
+    location: location || '',
+    area: area || '',
+    lot: lot || '',
+    rack: rack || '',
+    wip_stage: wip_stage || null,
+    note: note || '',
+    createdAt: now,
+    updatedAt: now
+  };
+
+  store.movements.push(movement);
+  db.saveData(store);
+  res.json({ ok: true, movement });
+});
+
+// GET /api/inventory/movements - Get movements with optional filters
+router.get('/inventory/movements', (req, res) => {
+  const { start, end, item, type } = req.query || {};
+  const store = db.getData();
+  let movements = store.movements || [];
+
+  // Filter by date range
+  if (start || end) {
+    movements = movements.filter(m => {
+      const date = m.doc_date;
+      if (start && date < start) return false;
+      if (end && date > end) return false;
+      return true;
+    });
+  }
+
+  // Filter by item code
+  if (item) {
+    movements = movements.filter(m => 
+      m.item_code.toLowerCase().includes(item.toLowerCase()) ||
+      m.item_name.toLowerCase().includes(item.toLowerCase())
+    );
+  }
+
+  // Filter by movement type
+  if (type) {
+    movements = movements.filter(m => m.movement_type === type);
+  }
+
+  res.json({ ok: true, rows: movements, count: movements.length });
+});
+
+// GET /api/inventory/aggregations/mutasi - Mutation aggregation for kepabeanan reports
+router.get('/inventory/aggregations/mutasi', (req, res) => {
+  const { start, end, item } = req.query || {};
+  const store = db.getData();
+  let movements = store.movements || [];
+
+  // Filter by date range
+  if (start || end) {
+    movements = movements.filter(m => {
+      const date = m.doc_date;
+      if (start && date < start) return false;
+      if (end && date > end) return false;
+      return true;
+    });
+  }
+
+  // Filter by item code
+  if (item) {
+    movements = movements.filter(m => 
+      m.item_code.toLowerCase().includes(item.toLowerCase())
+    );
+  }
+
+  // Aggregate by item_code
+  const aggregated = {};
+  movements.forEach(m => {
+    const key = m.item_code;
+    if (!aggregated[key]) {
+      aggregated[key] = {
+        item_code: m.item_code,
+        item_name: m.item_name,
+        unit: m.unit || 'unit',
+        opening_balance: 0,
+        inbound: 0,
+        outbound: 0,
+        adjustment: 0,
+        book_balance: 0,
+        physical_opname: 0,
+        variance: 0,
+        notes: '',
+        wip_stage: null,
+        location: m.location || '',
+        area: m.area || '',
+        lot: m.lot || '',
+        rack: m.rack || ''
+      };
+    }
+
+    if (m.movement_type === 'IN') {
+      aggregated[key].inbound += Number(m.qty) || 0;
+    } else if (m.movement_type === 'OUT') {
+      aggregated[key].outbound += Number(m.qty) || 0;
+    } else if (m.movement_type === 'ADJ') {
+      aggregated[key].adjustment += Number(m.qty) || 0;
+    }
+  });
+
+  // Calculate balances
+  Object.keys(aggregated).forEach(key => {
+    const agg = aggregated[key];
+    agg.book_balance = agg.opening_balance + agg.inbound - agg.outbound + agg.adjustment;
+    agg.physical_opname = agg.book_balance; // Default: assume opname = book balance
+    agg.variance = agg.physical_opname - agg.book_balance;
+  });
+
+  const rows = Object.values(aggregated);
+  res.json({ ok: true, rows, summary: { totalRows: rows.length, totalInbound: rows.reduce((s, r) => s + r.inbound, 0), totalOutbound: rows.reduce((s, r) => s + r.outbound, 0) } });
+});
+
 module.exports = router;

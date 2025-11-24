@@ -36,7 +36,7 @@ import {
 import notificationService from '../services/notificationService';
 import BridgeHeader from './BridgeHeader';
 import BridgeStatCard from './BridgeStatCard';
-import { fetchItems, createItem, createMovement, fetchInventoryMovements, migrateBridgeInventory } from '../services/kepabeananService';
+import { fetchItems, createItem, createMovement, fetchInventoryMovements } from '../services/kepabeananService';
 
 const BC_TYPES = [
   'BC 2.5',
@@ -89,25 +89,6 @@ const BridgeInventoryManagement = ({ onNotification }) => {
   });
 
   const [itemsList, setItemsList] = useState([]);
-  const [useServerInventory, setUseServerInventory] = useState(() => {
-    try { return localStorage.getItem('bridge_inventory_use_server') === '1'; } catch (e) { return false; }
-  });
-
-  const clearAllData = () => {
-    if (window.confirm('This will permanently delete ALL inventory data. Continue?')) {
-      if (window.confirm('Are you absolutely sure? This action cannot be undone.')) {
-        localStorage.removeItem('bridge_inventory');
-        localStorage.removeItem('bridge_inventory_backup');
-        setInventory([]);
-      }
-    }
-  };
-
-  const initializeEmptyDatabase = () => {
-    localStorage.removeItem('bridge_inventory');
-    localStorage.removeItem('bridge_inventory_backup');
-    setInventory([]);
-  };
 
   const createSampleInventory = () => [
     {
@@ -225,49 +206,16 @@ const BridgeInventoryManagement = ({ onNotification }) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Try load from inventory API first (preferred)
-      try {
-        const apiResp = await fetchInventoryMovements();
-        if (apiResp && Array.isArray(apiResp.rows) && apiResp.rows.length > 0) {
-          const mapped = apiResp.rows.map(mapMovementToInventory);
-          setInventory(mapped);
-          setLoading(false);
-          return;
-        }
-      } catch (e) {
-        // fallback to localStorage
-        console.warn('Inventory API fetch failed, falling back to localStorage', e);
+      const apiResp = await fetchInventoryMovements();
+      if (apiResp && Array.isArray(apiResp.rows)) {
+        const mapped = apiResp.rows.map(mapMovementToInventory);
+        setInventory(mapped);
+      } else {
+        setInventory([]);
       }
-
-      const bridgeInventoryRaw = localStorage.getItem('bridge_inventory');
-      let bridgeInventory = [];
-
-      if (bridgeInventoryRaw) {
-        try {
-          bridgeInventory = JSON.parse(bridgeInventoryRaw) || [];
-        } catch (e) {
-          console.warn('Error parsing BRIDGE inventory:', e);
-          bridgeInventory = [];
-          localStorage.removeItem('bridge_inventory');
-        }
-      }
-
-      // If no inventory exists, initialize sample data so views show temporary/demo data.
-      if (!bridgeInventory || bridgeInventory.length === 0) {
-        const sample = createSampleInventory();
-        bridgeInventory = sample;
-        try {
-          localStorage.setItem('bridge_inventory', JSON.stringify(sample));
-          console.info('✓ BRIDGE Inventory: Seeded sample data (%d items)', sample.length);
-        } catch (e) {
-          console.warn('Failed to persist sample inventory to localStorage', e);
-        }
-      }
-
-      setInventory(bridgeInventory);
-      
     } catch (error) {
-      console.error('Error loading BRIDGE module inventory data:', error);
+      console.error('Error loading inventory data from API:', error);
+      setInventory([]);
     } finally {
       setLoading(false);
     }
@@ -379,68 +327,52 @@ const BridgeInventoryManagement = ({ onNotification }) => {
         return;
       }
 
-      const inventoryData = {
-        ...formData,
-        id: selectedItem?.id || `INV-${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        createdAt: selectedItem?.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        module: 'BRIDGE',
-        moduleType: 'inventory_management'
-      };
+      // Extract item_code and item_name from form
+      let item_code = null;
+      let item_name = formData.item || '';
+      const mm = String(formData.item).match(/^([A-Z0-9\-]+)\s*-\s*(.+)$/i);
+      if (mm) { 
+        item_code = mm[1]; 
+        item_name = mm[2]; 
+      }
+      if (!item_code) item_code = `MAN-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
 
-      let updatedInventory;
-      if (selectedItem) {
-        updatedInventory = inventory.map(item => item.id === inventoryData.id ? inventoryData : item);
-      } else {
-        updatedInventory = [...inventory, inventoryData];
+      // Create/update master item
+      try { 
+        await createItem({ item_code, item_name, unit: '' }); 
+      } catch (e) { 
+        /* ignore duplicate item */ 
       }
 
-      if (useServerInventory) {
-        // when using server as source of truth, write to server and refresh from API
-        try {
-          let item_code = null;
-          let item_name = formData.item || '';
-          const mm = String(formData.item).match(/^([A-Z0-9\-]+)\s*-\s*(.+)$/i);
-          if (mm) { item_code = mm[1]; item_name = mm[2]; }
-          if (!item_code) item_code = `MAN-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-          try { await createItem({ item_code, item_name, unit: '' }); } catch (e) { /* ignore */ }
-          await createMovement({ doc_type: formData.bcInputType || 'BRIDGE', doc_number: formData.bl || '', doc_date: formData.warehouseEntryDate || new Date().toISOString().slice(0,10), receipt_number: formData.awb || '', receipt_date: formData.warehouseEntryDate || null, sender_name: formData.consignee || '', item_code, item_name, qty: Number(formData.quantity || 0), unit: '', value_amount: 0, value_currency: 'IDR', movement_type: 'IN', source: 'BRIDGE', note: formData.description || '' });
-          // reload from server
-          const apiResp = await fetchInventoryMovements();
-          if (apiResp && Array.isArray(apiResp.rows)) setInventory(apiResp.rows.map(mapMovementToInventory));
-        } catch (e) {
-          console.warn('Failed to write to Inventory Service', e);
-          // fallback: update local state and localStorage so user data isn't lost
-          setInventory(updatedInventory);
-          try { localStorage.setItem('bridge_inventory', JSON.stringify(updatedInventory)); } catch (err) { console.warn('Failed to persist inventory to localStorage', err); }
-        }
-      } else {
-        // write-through to Inventory Service (non-blocking)
-        (async () => {
-          try {
-            let item_code = null;
-            let item_name = formData.item || '';
-            const mm = String(formData.item).match(/^([A-Z0-9\-]+)\s*-\s*(.+)$/i);
-            if (mm) { item_code = mm[1]; item_name = mm[2]; }
-            if (!item_code) item_code = `MAN-${Date.now()}-${Math.random().toString(36).slice(2,6)}`;
-            try { await createItem({ item_code, item_name, unit: '' }); } catch (e) { /* ignore */ }
-            try { await createMovement({ doc_type: formData.bcInputType || 'BRIDGE', doc_number: formData.bl || '', doc_date: formData.warehouseEntryDate || new Date().toISOString().slice(0,10), receipt_number: formData.awb || '', receipt_date: formData.warehouseEntryDate || null, sender_name: formData.consignee || '', item_code, item_name, qty: Number(formData.quantity || 0), unit: '', value_amount: 0, value_currency: 'IDR', movement_type: 'IN', source: 'BRIDGE', note: formData.description || '' }); } catch (e) { console.warn('createMovement failed', e); }
-          } catch (e) {
-            console.warn('Failed to write to Inventory Service', e);
-          }
-        })();
+      // Create movement record
+      await createMovement({
+        doc_type: formData.bcInputType || 'BRIDGE',
+        doc_number: formData.bl || '',
+        doc_date: formData.warehouseEntryDate || new Date().toISOString().slice(0, 10),
+        receipt_number: formData.awb || '',
+        receipt_date: formData.warehouseEntryDate || null,
+        sender_name: formData.consignee || '',
+        item_code,
+        item_name,
+        qty: Number(formData.quantity || 0),
+        unit: '',
+        value_amount: 0,
+        value_currency: 'IDR',
+        movement_type: 'IN',
+        source: 'BRIDGE',
+        note: formData.description || ''
+      });
 
-        setInventory(updatedInventory);
-        try {
-          localStorage.setItem('bridge_inventory', JSON.stringify(updatedInventory));
-        } catch (e) {
-          console.warn('Failed to persist inventory to localStorage', e);
-        }
+      // Reload data from API
+      const apiResp = await fetchInventoryMovements();
+      if (apiResp && Array.isArray(apiResp.rows)) {
+        setInventory(apiResp.rows.map(mapMovementToInventory));
       }
 
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving inventory item:', error);
+      alert('Failed to save inventory item: ' + (error.message || error));
     } finally {
       setLoading(false);
     }
@@ -487,11 +419,15 @@ const BridgeInventoryManagement = ({ onNotification }) => {
   const handleDeleteItem = async (item) => {
     if (window.confirm(`Are you sure you want to delete "${item.item}"?`)) {
       try {
+        setLoading(true);
+        // TODO: Implement API delete endpoint when needed
+        // For now, just remove from local state
         const updatedInventory = inventory.filter(i => i.id !== item.id);
         setInventory(updatedInventory);
-        localStorage.setItem('bridge_inventory', JSON.stringify(updatedInventory));
       } catch (error) {
         console.error('Error deleting inventory item:', error);
+      } finally {
+        setLoading(false);
       }
     }
   };
@@ -516,47 +452,6 @@ const BridgeInventoryManagement = ({ onNotification }) => {
         subtitle="Warehouse Inventory Tracking System"
         actions={(
           <Box display="flex" gap={1}>
-            <Button
-              variant="contained"
-              color="error"
-              onClick={clearAllData}
-              sx={{ minWidth: 'auto' }}
-            >
-              Clear All
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              onClick={async () => {
-                if (!window.confirm('Migrate local BRIDGE inventory to Inventory Service?')) return;
-                try {
-                  const raw = localStorage.getItem('bridge_inventory');
-                  const arr = raw ? JSON.parse(raw) : [];
-                  if (!arr || !arr.length) return alert('No local BRIDGE inventory found');
-                  setLoading(true);
-                  const resp = await migrateBridgeInventory(arr);
-                  alert(`Migrated ${resp.migrated || 0} records`);
-                  // backup and switch to server mode
-                  try {
-                    localStorage.setItem('bridge_inventory_backup', raw);
-                    localStorage.removeItem('bridge_inventory');
-                    localStorage.setItem('bridge_inventory_use_server', '1');
-                    setUseServerInventory(true);
-                  } catch (e) {
-                    console.warn('Failed to set migration flags in localStorage', e);
-                  }
-                  // reload from server
-                  const apiResp = await fetchInventoryMovements();
-                  if (apiResp && Array.isArray(apiResp.rows)) setInventory(apiResp.rows.map(mapMovementToInventory));
-                } catch (e) {
-                  console.error('Migration failed', e);
-                  alert('Migration failed: ' + (e.message || e));
-                } finally { setLoading(false); }
-              }}
-              sx={{ minWidth: 'auto' }}
-            >
-              Migrate to Inventory Service
-            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
