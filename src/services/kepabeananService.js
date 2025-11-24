@@ -71,9 +71,9 @@ export async function fetchMutasiAggregation(type, filters = {}) {
   if (filters.startDate) qs.set('start', filters.startDate);
   if (filters.endDate) qs.set('end', filters.endDate);
   if (filters.item) qs.set('item', filters.item);
-  
+  // Include type filter so backend narrows by item_group
+  if (type) qs.set('type', type);
   // Unified endpoint: fetch from inventory aggregations
-  // type can be 'bahan', 'produk', 'asset', 'reject' but all use same aggregation logic
   const url = `${API_BASE}/inventory/aggregations/mutasi?${qs.toString()}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error('Fetch failed');
@@ -90,14 +90,8 @@ export async function fetchWip(filters = {}) {
 }
 
 export async function fetchMutasiBahan(filters = {}) {
-  const qs = new URLSearchParams();
-  if (filters.startDate) qs.set('start', filters.startDate);
-  if (filters.endDate) qs.set('end', filters.endDate);
-  if (filters.item) qs.set('item', filters.item);
-  const url = `${API_BASE}/kepabeanan/reports/mutasi_bahan?${qs.toString()}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error('Fetch failed');
-  return res.json();
+  // Use unified aggregation endpoint with type=bahan
+  return fetchMutasiAggregation('bahan', filters);
 }
 
 export async function migrateBridgeInventory(payload = []) {

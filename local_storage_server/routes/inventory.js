@@ -283,7 +283,7 @@ router.post('/consignments/dispatch', (req, res) => {
 
 // POST /api/inventory/items - Create or update item master
 router.post('/inventory/items', (req, res) => {
-  const { item_code, item_name, unit } = req.body || {};
+  const { item_code, item_name, unit, item_group, hs_code, default_price, currency, description } = req.body || {};
   if (!item_code || !item_name) {
     return res.status(400).json({ ok: false, message: 'item_code and item_name are required' });
   }
@@ -297,6 +297,11 @@ router.post('/inventory/items', (req, res) => {
   if (existing) {
     existing.item_name = item_name;
     existing.unit = unit || existing.unit;
+    existing.item_group = item_group || existing.item_group || 'bahan';
+    existing.hs_code = hs_code || existing.hs_code || '';
+    existing.default_price = default_price || existing.default_price || 0;
+    existing.currency = currency || existing.currency || 'IDR';
+    existing.description = description || existing.description || '';
     existing.updatedAt = now;
   } else {
     existing = {
@@ -304,6 +309,11 @@ router.post('/inventory/items', (req, res) => {
       item_code,
       item_name,
       unit: unit || 'unit',
+      item_group: item_group || 'bahan',
+      hs_code: hs_code || '',
+      default_price: default_price || 0,
+      currency: currency || 'IDR',
+      description: description || '',
       createdAt: now,
       updatedAt: now
     };
@@ -351,52 +361,77 @@ router.post('/inventory/locations', (req, res) => {
   res.json({ ok: true, locations: store.locations });
 });
 
-// POST /api/inventory/movements - Create movement with warehouse fields
-// body: { doc_type, doc_number, doc_date, receipt_number, receipt_date, sender_name, item_code, item_name, qty, unit, movement_type, location, area, lot, rack, wip_stage, note, source }
+// POST /api/inventory/movements - Create movement(s) with warehouse fields
+// body: can be single movement { item_code,... } OR { items: [ { item_code, qty, ... }, ... ], doc_type, doc_number, doc_date, location_id, to_location_id }
 router.post('/inventory/movements', (req, res) => {
   const body = req.body || {};
-  const {
-    doc_type, doc_number, doc_date, receipt_number, receipt_date, sender_name,
-    item_code, item_name, qty, unit, movement_type, location, area, lot, rack, wip_stage, note, source
-  } = body;
-
-  if (!item_code || !qty || !movement_type) {
-    return res.status(400).json({ ok: false, message: 'item_code, qty, and movement_type are required' });
-  }
-
   const store = db.getData();
   store.movements = store.movements || [];
   const now = new Date().toISOString();
 
-  const movement = {
-    id: uuidv4(),
-    doc_type: doc_type || 'IN',
-    doc_number: doc_number || `DOC-${Date.now()}`,
-    doc_date: doc_date || now.split('T')[0],
-    receipt_number: receipt_number || '',
-    receipt_date: receipt_date || now.split('T')[0],
-    sender_name: sender_name || '',
-    item_code,
-    item_name: item_name || item_code,
-    qty: Number(qty),
-    unit: unit || 'unit',
-    value_amount: body.value_amount || 0,
-    value_currency: body.value_currency || 'IDR',
-    movement_type: movement_type || 'IN',
-    source: source || 'WAREHOUSE',
-    location: location || '',
-    area: area || '',
-    lot: lot || '',
-    rack: rack || '',
-    wip_stage: wip_stage || null,
-    note: note || '',
-    createdAt: now,
-    updatedAt: now
-  };
+  // helper to create single movement entry
+  function makeMovement(base, it) {
+    return {
+      id: uuidv4(),
+      doc_type: base.doc_type || it.doc_type || 'IN',
+      doc_number: base.doc_number || it.doc_number || `DOC-${Date.now()}`,
+      doc_date: base.doc_date || it.doc_date || now,
+      receipt_number: base.receipt_number || it.receipt_number || '',
+      receipt_date: base.receipt_date || it.receipt_date || now,
+      sender_name: base.sender_name || it.sender_name || '',
+      item_code: it.item_code,
+      item_name: it.item_name || it.item_code,
+      qty: Number(it.qty || 0),
+      unit: it.unit || base.unit || 'unit',
+      value_amount: it.value_amount || base.value_amount || 0,
+      value_currency: it.value_currency || base.value_currency || 'IDR',
+      movement_type: it.movement_type || base.movement_type || 'IN',
+      source: it.source || base.source || 'WAREHOUSE',
+      location_id: it.location_id || base.location_id || it.location || base.location || '',
+      to_location_id: it.to_location_id || base.to_location_id || '',
+      area: it.area || base.area || '',
+      lot: it.lot || base.lot || it.lot || '',
+      serial_no: it.serial_no || it.serial || '',
+      rack: it.rack || base.rack || '',
+      wip_stage: it.wip_stage || base.wip_stage || null,
+      reference_id: it.reference_id || base.reference_id || null,
+      created_by: it.created_by || base.created_by || 'system',
+      approved_by: it.approved_by || base.approved_by || null,
+      approval_status: it.approval_status || base.approval_status || 'pending',
+      note: it.note || base.note || '',
+      createdAt: now,
+      updatedAt: now
+    };
+  }
 
-  store.movements.push(movement);
-  db.saveData(store);
-  res.json({ ok: true, movement });
+  try {
+    const items = Array.isArray(body.items) ? body.items : null;
+    const created = [];
+
+    if (items && items.length > 0) {
+      for (const it of items) {
+        if (!it.item_code || !it.qty) continue;
+        const mv = makeMovement(body, it);
+        store.movements.push(mv);
+        created.push(mv);
+      }
+    } else {
+      // Single item style fallback
+      const it = body;
+      if (!it.item_code || !it.qty) {
+        return res.status(400).json({ ok: false, message: 'item_code, qty, and movement_type are required (or provide items[]).' });
+      }
+      const mv = makeMovement({}, it);
+      store.movements.push(mv);
+      created.push(mv);
+    }
+
+    db.saveData(store);
+    res.json({ ok: true, created, count: created.length });
+  } catch (err) {
+    console.error('create movements error', err);
+    res.status(500).json({ ok: false, message: err.message || 'internal' });
+  }
 });
 
 // GET /api/inventory/movements - Get movements with optional filters
@@ -431,9 +466,34 @@ router.get('/inventory/movements', (req, res) => {
   res.json({ ok: true, rows: movements, count: movements.length });
 });
 
+// POST /api/inventory/stock-opname - record stock take / adjustments
+// body: { opname_date, location_id, items: [ { item_code, recorded_qty, counted_qty, note } ], performed_by }
+router.post('/inventory/stock-opname', (req, res) => {
+  const body = req.body || {};
+  const { opname_date, location_id, items, performed_by } = body;
+  if (!Array.isArray(items) || items.length === 0) return res.status(400).json({ ok: false, message: 'items array required' });
+
+  const store = db.getData();
+  store.stock_opname = store.stock_opname || [];
+  const now = new Date().toISOString();
+
+  const entry = {
+    id: `OP-${Date.now()}`,
+    opname_date: opname_date || now,
+    location_id: location_id || '',
+    items: items.map(it => ({ item_code: it.item_code, recorded_qty: Number(it.recorded_qty || 0), counted_qty: Number(it.counted_qty || 0), adjustment: Number((it.counted_qty || 0) - (it.recorded_qty || 0)), note: it.note || '' })),
+    performed_by: performed_by || 'system',
+    createdAt: now
+  };
+
+  store.stock_opname.push(entry);
+  db.saveData(store);
+  res.json({ ok: true, entry });
+});
+
 // GET /api/inventory/aggregations/mutasi - Mutation aggregation for kepabeanan reports
 router.get('/inventory/aggregations/mutasi', (req, res) => {
-  const { start, end, item } = req.query || {};
+  const { start, end, item, type } = req.query || {};
   const store = db.getData();
   let movements = store.movements || [];
 
@@ -454,6 +514,13 @@ router.get('/inventory/aggregations/mutasi', (req, res) => {
     );
   }
 
+  // Filter by item group/type (bahan|produk|asset|reject)
+  if (type) {
+    store.items = store.items || [];
+    const allowed = new Set(store.items.filter(i => (i.item_group || '').toLowerCase() === String(type).toLowerCase()).map(i => i.item_code));
+    movements = movements.filter(m => allowed.has(m.item_code));
+  }
+
   // Aggregate by item_code
   const aggregated = {};
   movements.forEach(m => {
@@ -472,10 +539,12 @@ router.get('/inventory/aggregations/mutasi', (req, res) => {
         variance: 0,
         notes: '',
         wip_stage: null,
-        location: m.location || '',
+        location_id: m.location_id || m.location || '',
+        to_location_id: m.to_location_id || '',
         area: m.area || '',
         lot: m.lot || '',
-        rack: m.rack || ''
+        rack: m.rack || '',
+        serial_no: m.serial_no || ''
       };
     }
 
