@@ -66,6 +66,17 @@ const BRidgeCustomsPortal = ({ onNotification }) => {
     { value: 'bc_approved', label: 'BC Approved', color: 'info' },
     { value: 'bc_rejected', label: 'BC Rejected', color: 'error' }
   ];
+  // Add TPPB-specific statuses including rejected/damaged
+  statusOptions.push(
+    { value: 'TPPB_PENDING', label: 'TPPB Pending', color: 'warning' },
+    { value: 'TPPB_APPROVED_FOR_SALE', label: 'TPPB Approved (Sale)', color: 'success' },
+    { value: 'TPPB_APPROVED_FOR_REEXPORT', label: 'TPPB Approved (Re-export)', color: 'info' },
+    { value: 'TPPB_TRANSFERRED', label: 'TPPB Transferred', color: 'primary' },
+    { value: 'TPPB_RETURNED', label: 'TPPB Returned', color: 'default' },
+    { value: 'TPPB_CLEARED', label: 'TPPB Cleared', color: 'success' },
+    { value: 'TPPB_REJECTED', label: 'TPPB Rejected', color: 'error' },
+    { value: 'TPPB_DAMAGED', label: 'TPPB Damaged', color: 'error' }
+  );
 
   // Location options
   const locationOptions = [
@@ -285,7 +296,25 @@ const BRidgeCustomsPortal = ({ onNotification }) => {
       status: 'warehouse',
       quantity: 1,
       description: '',
-      supportingDocuments: []
+      supportingDocuments: [],
+      // TPPB / Customs fields for consistency with Inventory form
+      tppb_number: '',
+      tppb_date_start: '',
+      tppb_date_end: '',
+      hs_code: '',
+      manifest_number: '',
+      manifest_line_no: '',
+      approval_by: '',
+      approval_date: '',
+      approval_status: 'pending',
+      country_of_origin: '',
+      export_destination: '',
+      tppb_custodian: '',
+      tppb_contact: '',
+      fob_value: 0,
+      cif_value: 0,
+      condition: 'baik',
+      qty_condition_breakdown: ''
     });
 
     const [uploadedFiles, setUploadedFiles] = useState([]);
@@ -405,6 +434,89 @@ const BRidgeCustomsPortal = ({ onNotification }) => {
                 onChange={(e) => setFormData({...formData, description: e.target.value})}
                 required
               />
+            </Grid>
+
+            {/* TPPB / Customs Extra Fields for consistency */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>TPPB / Customs Details</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="TPPB Number"
+                value={formData.tppb_number}
+                onChange={(e) => setFormData({...formData, tppb_number: e.target.value})}
+                placeholder="e.g., TPPB-2025-00001"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="HS Code"
+                value={formData.hs_code}
+                onChange={(e) => setFormData({...formData, hs_code: e.target.value})}
+                placeholder="e.g., 3916.90.20"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Manifest Number"
+                value={formData.manifest_number}
+                onChange={(e) => setFormData({...formData, manifest_number: e.target.value})}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Manifest Line No"
+                value={formData.manifest_line_no}
+                onChange={(e) => setFormData({...formData, manifest_line_no: e.target.value})}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Condition</InputLabel>
+                <Select
+                  value={formData.condition}
+                  onChange={(e) => setFormData({...formData, condition: e.target.value})}
+                  label="Condition"
+                >
+                  <MenuItem value="baik">Baik</MenuItem>
+                  <MenuItem value="rusak">Rusak</MenuItem>
+                  <MenuItem value="cacat">Cacat</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Approval Status</InputLabel>
+                <Select
+                  value={formData.approval_status}
+                  onChange={(e) => setFormData({...formData, approval_status: e.target.value})}
+                  label="Approval Status"
+                >
+                  <MenuItem value="pending">pending</MenuItem>
+                  <MenuItem value="approved">approved</MenuItem>
+                  <MenuItem value="rejected">rejected</MenuItem>
+                  <MenuItem value="for_inspection">for_inspection</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Country of Origin" value={formData.country_of_origin} onChange={(e) => setFormData({...formData, country_of_origin: e.target.value})} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="Export Destination" value={formData.export_destination} onChange={(e) => setFormData({...formData, export_destination: e.target.value})} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="FOB Value" type="number" value={formData.fob_value} onChange={(e) => setFormData({...formData, fob_value: Number(e.target.value || 0)})} />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField fullWidth label="CIF Value" type="number" value={formData.cif_value} onChange={(e) => setFormData({...formData, cif_value: Number(e.target.value || 0)})} />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField fullWidth label="Qty Condition Breakdown" value={formData.qty_condition_breakdown} onChange={(e) => setFormData({...formData, qty_condition_breakdown: e.target.value})} placeholder="e.g., 90 baik, 8 rusak, 2 cacat" />
             </Grid>
 
             {/* Document Upload Section */}
