@@ -70,6 +70,7 @@ const BridgeInventoryManagement = ({ onNotification }) => {
   const [selectedCustomsStatus, setSelectedCustomsStatus] = useState('all');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [issueDialogOpen, setIssueDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -96,6 +97,59 @@ const BridgeInventoryManagement = ({ onNotification }) => {
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
+  };
+
+  // Goods Issue form state
+  const [issueForm, setIssueForm] = useState({
+    doc_type: 'BRIDGE-OUT',
+    doc_number: '',
+    doc_date: '',
+    receipt_number: '',
+    location_id: '',
+    items: [] // { inbound_id, item_code, item_name, qty }
+  });
+
+  const handleIssueInput = (field) => (e) => setIssueForm(prev => ({ ...prev, [field]: e.target.value }));
+
+  const openIssueDialog = () => {
+    // initialize with blank
+    setIssueForm({ doc_type: 'BRIDGE-OUT', doc_number: '', doc_date: new Date().toISOString().slice(0,10), receipt_number: '', location_id: '', items: [] });
+    setIssueDialogOpen(true);
+  };
+
+  const closeIssueDialog = () => setIssueDialogOpen(false);
+
+  const addIssueLine = () => {
+    setIssueForm(prev => ({ ...prev, items: [...prev.items, { inbound_id: '', item_code: '', item_name: '', qty: 0 }] }));
+  };
+
+  const updateIssueLine = (idx, field, value) => {
+    const items = [...issueForm.items];
+    items[idx] = { ...items[idx], [field]: value };
+    setIssueForm(prev => ({ ...prev, items }));
+  };
+
+  const removeIssueLine = (idx) => {
+    const items = [...issueForm.items];
+    items.splice(idx, 1);
+    setIssueForm(prev => ({ ...prev, items }));
+  };
+
+  const handleSaveIssue = async () => {
+    try {
+      setLoading(true);
+      // Build payload: items[] with movement_type OUT
+      const payload = { doc_type: issueForm.doc_type, doc_number: issueForm.doc_number || `OUT-${Date.now()}`, doc_date: issueForm.doc_date, receipt_number: issueForm.receipt_number, location_id: issueForm.location_id, items: issueForm.items.map(it => ({ item_code: it.item_code, item_name: it.item_name, qty: Number(it.qty || 0), movement_type: 'OUT', reference_id: it.inbound_id })) };
+      await createMovement(payload);
+      const apiResp = await fetchInventoryMovements();
+      if (apiResp && Array.isArray(apiResp.rows)) setInventory(apiResp.rows.map(mapMovementToInventory));
+      closeIssueDialog();
+    } catch (err) {
+      console.error('Failed to create issue movement', err);
+      alert('Failed to create goods issue: ' + (err.message || err));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const createSampleInventory = () => [
@@ -467,6 +521,14 @@ const BridgeInventoryManagement = ({ onNotification }) => {
               sx={{ py: 1.5, px: 3 }}
             >
               Add Inventory Item
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<InventoryIcon />}
+              onClick={() => openIssueDialog()}
+              sx={{ py: 1.5, px: 3 }}
+            >
+              Goods Issue
             </Button>
           </Box>
         )}
@@ -885,6 +947,65 @@ const BridgeInventoryManagement = ({ onNotification }) => {
           >
             {loading ? 'Saving...' : selectedItem ? 'Update Item' : 'Add Item'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Goods Issue Dialog */}
+      <Dialog open={issueDialogOpen} onClose={closeIssueDialog} maxWidth="md" fullWidth>
+        <DialogTitle>Goods Issue (Pengeluaran)</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth label="Doc Number" value={issueForm.doc_number} onChange={handleIssueInput('doc_number')} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth type="date" label="Doc Date" value={issueForm.doc_date} onChange={handleIssueInput('doc_date')} InputLabelProps={{ shrink: true }} />
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <TextField fullWidth label="Receipt / AWB" value={issueForm.receipt_number} onChange={handleIssueInput('receipt_number')} />
+            </Grid>
+
+            <Grid item xs={12}>
+              <Button size="small" onClick={addIssueLine}>Add Line</Button>
+            </Grid>
+
+            {issueForm.items.map((line, idx) => (
+              <React.Fragment key={`issue-line-${idx}`}>
+                <Grid item xs={12} md={4}>
+                  <FormControl fullWidth>
+                    <InputLabel>Inbound Reference</InputLabel>
+                    <Select value={line.inbound_id} onChange={(e) => {
+                      const inbound = (inventory || []).find(i => i.id === e.target.value);
+                      updateIssueLine(idx, 'inbound_id', e.target.value);
+                      updateIssueLine(idx, 'item_code', inbound ? inbound.item.split(' - ')[0] : '');
+                      updateIssueLine(idx, 'item_name', inbound ? inbound.item.split(' - ')[1] || inbound.item : '');
+                    }} label="Inbound Reference">
+                      <MenuItem value="">Select inbound</MenuItem>
+                      {(inventory || []).map(inv => (
+                        <MenuItem key={inv.id} value={inv.id}>{inv.bl} — {inv.item} — {inv.quantity}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth label="Item Code" value={line.item_code} onChange={(e) => updateIssueLine(idx, 'item_code', e.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField fullWidth label="Item Name" value={line.item_name} onChange={(e) => updateIssueLine(idx, 'item_name', e.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={2}>
+                  <TextField fullWidth type="number" label="Qty" value={line.qty} onChange={(e) => updateIssueLine(idx, 'qty', e.target.value)} />
+                </Grid>
+                <Grid item xs={12} md={12} sx={{ textAlign: 'right' }}>
+                  <Button color="error" size="small" onClick={() => removeIssueLine(idx)}>Remove</Button>
+                </Grid>
+              </React.Fragment>
+            ))}
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeIssueDialog}>Cancel</Button>
+          <Button onClick={handleSaveIssue} variant="contained">Create Issue</Button>
         </DialogActions>
       </Dialog>
       </>
