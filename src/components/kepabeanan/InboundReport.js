@@ -59,19 +59,19 @@ export default function InboundReport() {
 
   function csvColumns() {
     return [
-      { key: 'doc_type', label: 'Dokumen Pabean (Jenis)' },
+      { key: 'no', label: 'No' },
+      { key: 'doc_type', label: 'Jenis Dokumen Pabean' },
       { key: 'doc_number', label: 'Nomor Dokumen' },
       { key: 'doc_date', label: 'Tanggal Dokumen' },
-      { key: 'receipt_number', label: 'Bukti Terima (No)' },
-      { key: 'receipt_date', label: 'Tanggal Terima' },
-      { key: 'sender_name', label: 'Nama Pengirim' },
+      { key: 'receipt_number', label: 'Nomor Bukti Penerimaan' },
+      { key: 'receipt_date', label: 'Tanggal Penerimaan' },
+      { key: 'sender_name', label: 'Pengirim Barang' },
       { key: 'item_code', label: 'Kode Barang' },
       { key: 'item_name', label: 'Nama Barang' },
       { key: 'qty', label: 'Jumlah' },
       { key: 'unit', label: 'Satuan' },
       { key: 'value_amount', label: 'Nilai' },
       { key: 'value_currency', label: 'Mata Uang' },
-      { key: 'note', label: 'Keterangan' },
     ];
   }
 
@@ -266,29 +266,55 @@ export default function InboundReport() {
         </Grid>
       )}
 
-      {/* Table Section */}
-      <TableContainer component={Paper} elevation={1}>
-        <Table sx={{ minWidth: 'max-content' }}>
+      <TableContainer component={Paper} elevation={1} sx={{ overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 1400 }}>
           <TableHead>
             <TableRow sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-              {csvColumns().map((col) => (
-                <TableCell
-                  key={col.key}
-                  sx={{
-                    fontWeight: 'bold',
-                    color: 'white',
-                    backgroundColor: '#667eea',
-                  }}
-                >
-                  {col.label}
-                </TableCell>
-              ))}
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 50, textAlign: 'center' }}>
+                No
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Jenis Dokumen Pabean
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Nomor Dokumen
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Tanggal Dokumen
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                No. Bukti Penerimaan
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Tanggal Penerimaan
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Pengirim Barang
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Kode Barang
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Nama Barang
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Jumlah
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 80 }}>
+                Satuan
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Nilai
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 80 }}>
+                Mata Uang
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.length === 0 && !loading ? (
               <TableRow>
-                <TableCell colSpan={csvColumns().length} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={13} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">Tidak ada data ditemukan</Typography>
                 </TableCell>
               </TableRow>
@@ -302,11 +328,45 @@ export default function InboundReport() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  {csvColumns().map((col) => (
-                    <TableCell key={col.key} sx={{ py: 1.5 }}>
-                      {String(row[col.key] ?? '')}
-                    </TableCell>
-                  ))}
+                  <TableCell sx={{ py: 1.5, textAlign: 'center', fontWeight: 'bold', color: '#667eea' }}>
+                    {idx + 1}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.doc_type ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontFamily: 'monospace' }}>
+                    {String(row.doc_number ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.doc_date ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontFamily: 'monospace' }}>
+                    {String(row.receipt_number ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.receipt_date ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.sender_name ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontWeight: 'bold' }}>
+                    {String(row.item_code ?? '')}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.item_name ?? '')}
+                  </TableCell>
+                  <TableCell align="right" sx={{ py: 1.5, fontWeight: 'bold' }}>
+                    {(row.qty || 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.unit ?? '')}
+                  </TableCell>
+                  <TableCell align="right" sx={{ py: 1.5 }}>
+                    {(row.value_amount || 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {String(row.value_currency ?? '')}
+                  </TableCell>
                 </TableRow>
               ))
             )}

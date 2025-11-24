@@ -204,23 +204,40 @@ export default function OutboundReport() {
       )}
 
       {/* Table Section */}
-      <TableContainer component={Paper} elevation={1}>
-        <Table sx={{ minWidth: 'max-content' }}>
+      <TableContainer component={Paper} elevation={1} sx={{ overflowX: 'auto' }}>
+        <Table sx={{ minWidth: 1200 }}>
           <TableHead>
             <TableRow sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Jenis Dokumen</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Nomor Dokumen</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Tanggal</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Kode Barang</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Nama Barang</TableCell>
-              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Jumlah</TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Satuan</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 50, textAlign: 'center' }}>
+                No
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Jenis Dokumen
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Nomor Dokumen
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Tanggal
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Kode Barang
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Nama Barang
+              </TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
+                Jumlah
+              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 80 }}>
+                Satuan
+              </TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.length === 0 && !loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">Tidak ada data ditemukan</Typography>
                 </TableCell>
               </TableRow>
@@ -234,13 +251,30 @@ export default function OutboundReport() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <TableCell sx={{ py: 1.5 }}>{row.doc_type}</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>{row.doc_number}</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>{row.doc_date}</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>{row.item_code}</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>{row.item_name}</TableCell>
-                  <TableCell align="right" sx={{ py: 1.5 }}>{(row.qty || 0).toLocaleString()}</TableCell>
-                  <TableCell sx={{ py: 1.5 }}>{row.unit}</TableCell>
+                  <TableCell sx={{ py: 1.5, textAlign: 'center', fontWeight: 'bold', color: '#667eea' }}>
+                    {idx + 1}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {row.doc_type || ''}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontFamily: 'monospace' }}>
+                    {row.doc_number || ''}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {row.doc_date || ''}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontWeight: 'bold' }}>
+                    {row.item_code || ''}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {row.item_name || ''}
+                  </TableCell>
+                  <TableCell align="right" sx={{ py: 1.5, fontWeight: 'bold' }}>
+                    {(row.qty || 0).toLocaleString()}
+                  </TableCell>
+                  <TableCell sx={{ py: 1.5 }}>
+                    {row.unit || ''}
+                  </TableCell>
                 </TableRow>
               ))
             )}
