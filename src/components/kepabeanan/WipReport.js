@@ -159,33 +159,19 @@ export default function WipReport() {
 
       {/* Table Section */}
       <TableContainer component={Paper} elevation={1} sx={{ overflowX: 'auto' }}>
-        <Table sx={{ minWidth: 1000 }}>
+        <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 50, textAlign: 'center' }}>
-                No
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
-                Kode Barang
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
-                Nama Barang
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
-                Stage WIP
-              </TableCell>
-              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>
-                Jumlah
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 80 }}>
-                Satuan
-              </TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Kode Barang</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Nama Barang</TableCell>
+              <TableCell sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea', width: 80 }}>Satuan</TableCell>
+              <TableCell align="right" sx={{ fontWeight: 'bold', color: 'white', backgroundColor: '#667eea' }}>Jumlah</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {rows.length === 0 && !loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
                   <Typography color="textSecondary">Tidak ada data ditemukan</Typography>
                 </TableCell>
               </TableRow>
@@ -199,24 +185,10 @@ export default function WipReport() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <TableCell sx={{ py: 1.5, textAlign: 'center', fontWeight: 'bold', color: '#667eea' }}>
-                    {idx + 1}
-                  </TableCell>
-                  <TableCell sx={{ py: 1.5, fontWeight: 'bold' }}>
-                    {row.item_code || ''}
-                  </TableCell>
-                  <TableCell sx={{ py: 1.5 }}>
-                    {row.item_name || ''}
-                  </TableCell>
-                  <TableCell sx={{ py: 1.5 }}>
-                    {row.wip_stage || '-'}
-                  </TableCell>
-                  <TableCell align="right" sx={{ py: 1.5, fontWeight: 'bold' }}>
-                    {(row.qty || 0).toLocaleString()}
-                  </TableCell>
-                  <TableCell sx={{ py: 1.5 }}>
-                    {row.unit || ''}
-                  </TableCell>
+                  <TableCell sx={{ py: 1.5, fontWeight: 'bold' }}>{row.item_code || ''}</TableCell>
+                  <TableCell sx={{ py: 1.5 }}>{row.item_name || ''}</TableCell>
+                  <TableCell sx={{ py: 1.5 }}>{row.unit || ''}</TableCell>
+                  <TableCell align="right" sx={{ py: 1.5, fontWeight: 'bold' }}>{(row.qty || 0).toLocaleString()}</TableCell>
                 </TableRow>
               ))
             )}
