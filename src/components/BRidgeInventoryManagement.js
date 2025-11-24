@@ -924,7 +924,6 @@ const BridgeInventoryManagement = ({ onNotification }) => {
                 label="AWB"
                 value={formData.awb}
                 onChange={handleInputChange('awb')}
-                required
                 placeholder="e.g., AWB-2024-001-AB"
               />
             </Grid>
@@ -934,7 +933,6 @@ const BridgeInventoryManagement = ({ onNotification }) => {
                 label="BL"
                 value={formData.bl}
                 onChange={handleInputChange('bl')}
-                required
                 placeholder="e.g., BL-2024-001"
               />
             </Grid>
